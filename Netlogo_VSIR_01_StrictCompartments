@@ -1,0 +1,176 @@
+;; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+;; Netlogo_VSIR_01_StrictCompartments
+;; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+;; This simulation realizes the VSIR model based on the following assumptions:
+
+;; Specific Assumptions
+; - Each individual belongs to exactly one compartment at a time out of susceptible, infected, recovered, vaccinated
+; - Every individual has each tick the chance of prob_vaccinate to get vaccinated.
+; - Vaccinated individuals chance to get infected is decreased proportionally by efficacy_vacc.
+; - Individuals loose their vaccination protection when getting infected.
+; - Once an individual dropped out of the vaccinated compartment, they can get vaccinated again with the same effect.
+
+;; Standard Assumptions
+; - Every susceptible individual has each tick the chance of prob_infect to infect other susceptible individuals on the same patch.
+; - Every infected individual has each tick the chance of prob_recover to recover.
+; - Every recovered individual has each tick the chance of prob_end_recover to move to the susceptible compartment.
+
+;; Suggested parameters for simulation with life-long immunity by recovery and vaccination:
+; initial_population = 300
+; initial_infected = 0.200
+; prob_infect = 0.200
+; prob_recover = 0.010
+; prob_vaccinate = 0.003
+; efficacy_rec = 1
+; efficacy_vacc = 1
+; max_ticks = 230
+
+;; Properties of the individuals
+turtles-own
+;; list all properties that the individuals have (i.e. the compartments)
+[ susceptible          ;; if true, the individual belongs to the susceptible compartment
+  infected             ;; if true, the individual belongs to the infected compartment
+  recovered            ;; if true, the individual belongs to the recovered compartment
+  vaccinated           ;; if true, the individual belongs to the vaccinated compartment
+]
+
+;; Global Variables that can be displayed via a monitor
+globals
+[ %susceptible           ;; what % of the population is susceptible
+  %infected              ;; what % of the population is infected
+  %recovered             ;; what % of the population is recovered
+  %vaccinated            ;; what % of the population is vaccinated
+]
+
+;; The setup is divided into procedures
+to setup
+  clear-all
+  setup-turtles
+  update-global-variables
+  update-display
+  reset-ticks
+end
+
+;; The function setup-turtles initializes all individuals
+;; -> Create initial_population many individuals
+;; -> Initialize all of them in the susceptible compartment
+;; -> Move initial_infected individuals to the infected compartment
+to setup-turtles
+  create-turtles initial_population
+  [ setxy random-xcor random-ycor
+    set susceptible true
+    set infected false
+    set vaccinated false
+    set recovered false
+    set shape "circle"
+    set size 0.5
+  ]
+  ask n-of (initial_infected_proportion * initial_population) turtles
+  [ get_infected ]
+end
+
+;; The go function will be repeatedly executed until a stop happens.
+;; All functions below it will only be executed if the are called in the go function.
+;; -> All individuals are asked if they get infected, recover of get vaccinated.
+;; -> We update everything, increase the tick by one and start over.
+to go
+  if ticks >= max_ticks [ stop ]
+  ask turtles
+  [ move        ;; Individuals move around randomly
+    recover_end ;; Recovered individuals loose their immunity by prob_end_recovery.
+    recover     ;; Infected individuals have the chance prob_recovery to recover.
+    vaccinate   ;; Vaccination take effect immediately, and can even protect in the same tick it is given.
+    infect      ;; the individuals get infected last, so they can not recover at the same tick.
+  ]
+  update-global-variables
+  update-display
+  tick
+end
+
+;; %%%%%%%%%%%%%%%%%
+;; Procedures
+;; %%%%%%%%%%%%%%%%%
+
+;; Individuals move about at random.
+to move ;; turtle procedure
+  rt random 100
+  lt random 100
+  fd 0.1
+end
+
+to get_infected
+  set susceptible false
+  set infected true
+end
+
+to infect
+; Individuals loose their vaccination protection after the get infected.
+; The protection can be regained by getting vaccinated again.
+  if infected
+  [ ask other turtles-here with [ not infected ]
+    [ if susceptible
+      [ if random-float 1 < prob_infect
+        [ set infected true
+          set susceptible false
+      ] ]
+
+      if vaccinated
+      [ if random-float 1 < prob_infect * (1 - efficacy_vacc)
+        [ set infected true
+          set vaccinated false
+  ] ] ] ]
+end
+
+to recover
+  if infected
+  [ if random-float 1 < prob_recover
+    [ set infected false
+      set recovered true
+  ] ]
+end
+
+to recover_end
+  if recovered
+  [ if random-float 1 < prob_end_recovered
+    [ set recovered false
+      set susceptible true
+  ] ]
+end
+
+to vaccinate
+  ;; Treat vaccination as separate compartment
+  if random-float 1 < prob_vaccinate
+  [ set vaccinated true
+    set susceptible false
+    set infected false ;; Vaccination makes the individuals recover immediately
+    set recovered false
+  ]
+end
+
+;; %%%%%%%%%%%%%%%%%
+;; Display Settings
+;; %%%%%%%%%%%%%%%%%
+
+;; Only used for the monitors of the percentages
+to update-global-variables
+  if count turtles > 0
+  [ set %susceptible (count turtles with [ susceptible ] / count turtles) * 100
+    set %infected (count turtles with [ infected ] / count turtles) * 100
+    set %recovered (count turtles with [ recovered ] / count turtles) * 100
+    set %vaccinated (count turtles with [ vaccinated ] / count turtles) * 100
+  ]
+end
+
+;; Used for the graphical display
+;; -> asks all individuals to change their color to their current compartment
+to update-display
+  ask turtles
+  [ set color
+    (ifelse-value
+    susceptible [ yellow ]
+    infected [ red ]
+    recovered [ violet ]
+    [ green ])
+  ]
+end
