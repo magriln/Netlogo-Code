@@ -1,0 +1,108 @@
+;; Two Country Procedures
+
+;; The function setup-turtles initializes all individuals
+; -> Create initial_population many individuals
+; -> Initialize all of them in the susceptible compartment
+; -> Move initial_infected individuals to the infected compartment
+to setup-turtles
+  create-turtles initial_population_country1
+  [ setxy random-xcor random-ycor
+    set country 1
+    set location 1
+    set susceptible true
+    set infected false
+    set vaccinated false
+    set recovered false
+    set shape "circle"
+    set size 0.5
+  ]
+  ask n-of (initial_infected_proportion * initial_population_country1) turtles with [ country = 1 ]
+  [ get_infected ]
+
+  create-turtles (initial_population_country2)
+  [ setxy random-xcor random-ycor
+    set country 2
+    set location 2
+    set susceptible true
+    set infected false
+    set vaccinated false
+    set recovered false
+    set shape "square"
+    set size 0.5
+  ]
+  ask n-of (initial_infected_proportion * initial_population_country2) turtles with [ country = 2 ]
+  [ get_infected ]
+end
+
+to get_infected
+  set susceptible false
+  set infected true
+  if country = 1 [ set #infections_1 #infections_1 + 1 ]
+  if country = 2 [ set #infections_2 #infections_2 + 1 ]
+end
+
+to return
+  if random-float 1 < prob_return
+  [ set location country ]
+end
+
+to infect
+  let here location ; here is now a local variable containing the current location
+  if infected
+  [ ask other turtles-here with [ susceptible and location = here ]
+    [ if susceptible and not vaccinated
+      [ if random-float 1 < prob_infect
+        [ get_infected
+      ] ]
+
+      if susceptible and vaccinated
+      [ if random-float 1 < prob_infect * (1 - efficacy_vacc)
+        [ get_infected
+  ] ] ] ]
+end
+
+to be_sick
+  if infected
+  [ let x random-float 1
+    if x < prob_recover
+    [ get_recovered ]
+    if prob_recover < x and x < prob_recover + (prob_die * prob_recover)
+    [ ifelse country = 1
+      [ set #deaths_1 #deaths_1 + 1 ]
+      [ set #deaths_2 #deaths_2 + 1 ]
+      die
+  ] ]
+end
+
+to travel
+  if random-float 1 < prob_travel
+  [ set location ifelse-value country = 1 [ 2 ] [ 1 ]
+  ]
+end
+
+;; %%%%%%%%%%%%%%%%
+;; Display Settings
+;; %%%%%%%%%%%%%%%%
+
+;; Only used for the monitors of the percentages
+to update-global-variables
+  if count turtles > 0
+  [ set %susceptible_1 (count turtles with [ susceptible and country = 1 ] / count turtles with [ country = 1 ]) * 100
+    set %infected_1 (count turtles with [ infected and country = 1 ] / count turtles with [ country = 1 ]) * 100
+    set %recovered_1 (count turtles with [ recovered and country = 1 ] / count turtles with [ country = 1 ]) * 100
+    set %vaccinated_1 (count turtles with [ vaccinated and country = 1] / count turtles with [ country = 1 ]) * 100
+  ]
+end
+
+;; Used for the graphical display
+;; -> asks all individuals to change their color to their current compartment
+to update-display
+  ask turtles
+  [ set color
+    (ifelse-value
+    susceptible [ yellow ]
+    infected [ red ]
+    recovered [ violet ]
+    [ green ])
+  ]
+end

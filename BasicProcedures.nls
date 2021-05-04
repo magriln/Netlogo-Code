@@ -1,0 +1,39 @@
+;; %%%%%%%%%%%%%%%%
+;; Basic Procedures
+;; %%%%%%%%%%%%%%%%
+
+;; Required variables:
+; prob_recover
+; prob_end_recovered
+
+;; Individuals move about at random.
+to move ;; turtle procedure
+  rt random 100
+  lt random 100
+  fd 0.1
+end
+
+to get_recovered
+  set infected false
+  set recovered true
+end
+
+to recovered_to_susceptible
+  set recovered false
+  set susceptible true
+end
+
+to recover
+  if infected
+  [ if random-float 1 < prob_recover
+    [ get_recovered ]
+  ]
+end
+
+;; The agent gets susceptible again after being immune by recovery
+to recover_end
+  if recovered
+  [ if random-float 1 < prob_end_recovered
+    [ recovered_to_susceptible ]
+  ]
+end

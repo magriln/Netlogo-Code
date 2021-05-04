@@ -1,0 +1,47 @@
+;; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+;; Setup for the Two Doses Simulation
+;; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+;; Properties of the individuals
+turtles-own
+;; list all properties that the individuals have (i.e. the compartments)
+[ susceptible          ;; if true, the individual belongs to the susceptible compartment
+  infected             ;; if true, the individual belongs to the infected compartment
+  recovered            ;; if true, the individual belongs to the recovered compartment
+  vaccination          ;; the number of vaccine doses an individual received
+  waiting_timer        ;; number of ticks since the individual got their first shot
+]
+
+;; Global Variables that can be displayed via a monitor
+globals
+[ %susceptible              ;; what % of the population is susceptible
+  %infected                 ;; what % of the population is infected
+  %recovered                ;; what % of the population is recovered
+  %vaccinated1st            ;; what % of the population is one shot vaccinated
+  %vaccinated2nd            ;; what % of the population is fully vaccinated
+  #deaths                   ;; number of deaths
+  #infections               ;; number of infections
+]
+
+;; The setup is divided into four procedures
+to setup
+  clear-all
+  setup-turtles
+  update-global-variables
+  update-display
+  reset-ticks
+end
+
+to setup-turtles
+  create-turtles initial_population
+  [ setxy random-xcor random-ycor
+    set susceptible true
+    set infected false
+    set vaccination 0
+    set recovered false
+    set shape "circle"
+    set size 0.5
+  ]
+  ask n-of (initial_infected_proportion * initial_population) turtles
+  [ get_infected ]
+end

@@ -1,0 +1,12 @@
+;; While being infected
+
+to be_sick
+  if infected
+  [ let x random-float 1
+    if x < prob_recover
+    [ get_recovered ]
+    if prob_recover < x and x < prob_recover + (prob_die * prob_recover)
+    [ set #deaths #deaths + 1
+      die
+  ] ]
+end

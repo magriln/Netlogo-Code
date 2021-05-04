@@ -1,0 +1,57 @@
+;; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+;; Basic Procedures for the Two Doses Simulation
+;; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+;; The function setup-turtles initializes all individuals
+;; -> Create initial_population many individuals
+;; -> Initialize all of them in the susceptible compartment
+;; -> Move initial_infected individuals to the infected compartment
+
+;; %%%%%%%%%%
+;; Procedures
+;; %%%%%%%%%%
+
+to get_infected
+  set susceptible false
+  set infected true
+  set #infections #infections + 1
+end
+
+to get_vaccinated
+  if vaccination = 0 [ set vaccination 1 ]
+  if vaccination = 1 and waiting_timer > waiting_time
+  [ set vaccination 2]
+end
+
+to update_waiting
+  if vaccination = 1
+  [ set waiting_timer waiting_timer + 1 ]
+end
+
+;; %%%%%%%%%%%%%%%%%
+;; Display Settings
+;; %%%%%%%%%%%%%%%%%
+
+;; Only used for the monitors of the percentages
+to update-global-variables
+  if count turtles > 0
+  [ set %susceptible (count turtles with [ susceptible ] / count turtles) * 100
+    set %infected (count turtles with [ infected ] / count turtles) * 100
+    set %recovered (count turtles with [ recovered ] / count turtles) * 100
+    set %vaccinated1st (count turtles with [ vaccination = 1 ] / count turtles) * 100
+    set %vaccinated2nd (count turtles with [ vaccination = 2 ] / count turtles) * 100
+  ]
+end
+
+;; Used for the graphical display
+;; -> asks all individuals to change their color to their current compartment
+to update-display
+  ask turtles
+  [ set color
+    (ifelse-value
+    susceptible [ yellow ]
+    infected [ red ]
+    recovered [ violet ]
+    [ green ])
+  ]
+end

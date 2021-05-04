@@ -1,0 +1,10 @@
+;; Used for the graphical display
+;; -> asks all individuals to change their color to their current compartment
+to update_display
+  ask turtles [set color (ifelse-value
+    susceptible [ yellow ]
+    infected [ red ]       ;; Individuals who are infected and vaccinated will be red
+    vaccination = 1 [ blue ]   ;; Individuals who are recovered and vaccianted1st will be blue
+    vaccination = 2 [ green ]  ;; Individuals who are recovered and vaccianted1st will be blue
+    [ magenta ]) ]
+end

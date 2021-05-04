@@ -1,0 +1,14 @@
+;; Requires
+; prob_infect
+; efficacy_vacc1st
+; efficacy_vacc2nd
+
+to infect
+  if infected
+  [ ask other turtles-here with [ not infected ]
+    [ let prob_infect_real prob_infect
+      if vaccination = 1 [ set prob_infect_real prob_infect * (1 - efficacy_vacc1st) ]
+      if vaccination = 2 [ set prob_infect_real prob_infect * (1 - efficacy_vacc2nd) ]
+      if random-float 1 < prob_infect_real [ get_infected ]
+  ] ]
+end
