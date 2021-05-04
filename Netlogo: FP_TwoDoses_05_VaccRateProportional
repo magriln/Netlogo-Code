@@ -1,0 +1,96 @@
+;; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+;; Netlogo: FP_TwoDoses_05_VaccRateProportional
+;; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+;; This simulation realizes the VSIR model based on the following assumptions:
+
+; Vaccination assumptions:
+; - Every individual can get vaccinated twice, where the second vaccination increases the efficacy of
+;    the vaccination.
+; - After the first vaccination, an individual can only get their second vaccination if the
+;    \texttt{waiting\_time} is over.
+; - The efficacy of the second dose is not decreased if the second dose is not received soon after the
+;    \texttt{waiting\_time} is over.
+; - The available vaccine doses can be prioritized. That is, a certain amount of vaccines will be used
+;    for first/second doses first and only if there are not enough eligible individuals, the rest of
+;    the doses will be given to other individuals that do not belong to the prioritized group.
+; - The efficacy of vaccination/recovery proportionally decreases proportionally the probability to
+;    get infected.
+; - The resistance of a vaccinated individual is not increased by recovery.
+; - Vaccination protection stays life-long, that is, it does not wear off over time.
+; - \textit{Constant vaccination rate:} Every tick the proportion of \texttt{vaccination\_rate\_i} of
+;    the population in country i gets vaccinated for i in \{1,2\}.
+; - The proportion of vacc_prop_1st of the vaccine doses will be used first for non-vaccinated
+;    individuals. The remaining doses will be used first for first-vaccinated individuals.
+
+; Standard assumptions:
+; - Every individual always belongs exactly to one of the following compartments: susceptible, infected
+;    or recovered.
+; - Every susceptible individual has each tick the chance of \texttt{prob\_infect} to infect other
+;    susceptible individuals on the same patch.
+; - Every infected individual has each tick the chance of \texttt{prob\_recover} to recover.
+; - Every recovered individual has each tick the chance of \texttt{prob\_end\_recover} to move to the
+;    susceptible compartment.
+; - Every infected individual has each tick the chance of \texttt{prob\_die} to die.
+
+__includes
+[ "Procedures/BasicProcedures.nls"            ;; Provides Basic Procedures
+  "Procedures/BasicProcedures_TwoDoses.nls"   ;; Provides Basic Procedures for the Two Doses Simulation
+  "Procedures/Setup_TwoDoses.nls"             ;; Provides the setup for the Two Doses Simulation
+  "Procedures/infect_TwoDose.nls"             ;; Provides to infect
+  "Procedures/be_sick.nls"                    ;; to be_sick
+]
+
+;; The go function will be repeatedly executed until a stop happens.
+;; All functions below it will only be executed if the are called in the go function.
+;; -> All individuals are asked if they get infected, recover of get vaccinated.
+;; -> We update everything, increase the tick by one and start over.
+to go
+  if ticks = max_ticks [ stop ]
+  vaccinate   ;; Vaccination take effect immediately, and can even protect in the same tick it is given.
+  ask turtles
+  [ move
+    recover_end      ;; Recovered individuals may get susceptible by prob_end_recovered
+    be_sick          ;; Infected individuals are sick and have the chance to either recover or die
+    infect           ;; the individuals get infected last, so they can not recover at the same tick.
+    update_waiting   ;; Update the waiting timer for the vaccinated individuals
+  ]
+  update-global-variables
+  update-display
+  tick
+end
+
+;; %%%%%%%%%%%%%%%%%
+;; Turtle Procedures
+;; %%%%%%%%%%%%%%%%%
+
+to vaccinate
+  ; No individual procedure! Do not ask a single individual to vaccinate, but the whole population
+  ; Syntax: ask n-of number agents [ command/report ]
+  let n count turtles
+  let #0th_vacc count turtles with [ vaccination = 0 ]
+  let #1st_vacc count turtles with [ vaccination = 1 and waiting_timer > waiting_time  ]
+  let #1st_doses (n * vaccination_rate * vacc_prop_1st)
+  let #2nd_doses (n * vaccination_rate * (1 - vacc_prop_1st))
+  ifelse #2nd_doses > #1st_vacc
+  [ ask n-of #1st_vacc turtles with [ vaccination = 1 and waiting_timer > waiting_time  ] [ get_vaccinated ] ;; Too many 2nd doses, so all first vaccinated individuals get their second dose
+    set #1st_doses (#1st_doses + #2nd_doses - #1st_vacc)  ;; Add the number of remaining 2nd doses to the number of 1st doses
+    ifelse #1st_doses > #0th_vacc
+    [ ask n-of #0th_vacc turtles with [ vaccination = 0 ] [ get_vaccinated ] ;; Too many 1st doses, so all 0th vaccinated individuals get vaccinated, the rest is wasted.
+    ]
+    [ ask n-of #1st_doses turtles with [ vaccination = 0 ] [ get_vaccinated ] ;; Otherwise, give all doses to 0th vaccianted individuals
+  ] ]
+  [ ifelse #1st_doses > #0th_vacc
+    [ ask n-of #0th_vacc turtles with [ vaccination = 0 ] [ get_vaccinated ] ;; Too many 1st doses, so all 0th vaccinated individuals get their first dose
+      set #2nd_doses (#2nd_doses + #1st_doses - #0th_vacc)                   ;; Add the number of remaining 1st doses to the number of 2nd doses
+      ifelse #2nd_doses > #1st_vacc
+      [ ask n-of #1st_vacc turtles with [ vaccination = 1 and waiting_timer > waiting_time ] [ get_vaccinated ] ;; Now, we have enough 2nd doses, to give all 1st vaccinated individuals their 2nd shot. The rest is wasted.
+      ]
+      [ ask n-of #2nd_doses turtles with [ vaccination = 1 and waiting_timer > waiting_time ] [ get_vaccinated ] ;; We take the rest of the doses and give them all to the 1st vaccinated individuals.
+      ]
+    ]
+    [ ask n-of #1st_doses turtles with [ vaccination = 0 ] [ get_vaccinated ] ;; We have neither more 1st doses than 0th vaccinated people,
+      ask n-of #2nd_doses turtles with [ vaccination = 1 and waiting_timer > waiting_time ] [ get_vaccinated ] ;; nor more 2nd doses than 1st vaccinated people
+    ]
+  ]
+end
