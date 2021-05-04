@@ -1,0 +1,116 @@
+;; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+;; Netlogo_TwoCountries_03_VaccRate
+;; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+;; This simulation consideres two distinct populations following the VSIR model with different vaccination rates.
+
+;; Specific assumptions:
+;  - Each individual belongs their whole life span to exactly one of two countries.
+;  - Each individual is at every time either located in exactly one of the countries.
+;  - Each individual can only infect individuals within the same location.
+;  - Individuals travel at a per-capita rate to the other country.
+;  - Individuals return to their home country ata per-capita rate.
+
+;; Vaccination assumptions:
+; - Vaccination is a property that each individual can either have or not.
+; - Vaccinated individuals chance to get infected is decreased proportionally by
+;    \texttt{efficacy\_vacc}.
+; - Vaccination protection stays life-long, that is, it does not wear off over time.
+; - The protection of a vaccinated individual is not increased by being recovered at the same time.
+; - \textit{Constant vaccination rate:} Every tick the proportion of \texttt{vaccination\_rate\_i} of
+;    the population in country i gets vaccinated for i in \{1,2\}.
+
+;; Standard assumptions:
+; - Every individual always belongs exactly to one of the following compartments: susceptible,
+;    infected or recovered.
+;   Every susceptible individual has each tick the chance of prob_infect to infect other susceptible
+;    individuals on the same patch.
+; - Every infected individual has each tick the chance of prob_recover to recover.
+; - Every recovered individual has each tick the chance of prob_end_recover to move to the
+;    susceptible compartment.
+; - Every infected has each tick the chance of prob_die to die.
+
+__includes [
+  "Procedures/BasicProcedures.nls"
+  "Procedures/BasicProcedures_TwoCountries.nls"
+]
+
+;; Properties of the individuals
+turtles-own
+;; list all properties that the individuals have (i.e. the compartments)
+[ susceptible          ;; if true, the individual belongs to the susceptible compartment
+  infected             ;; if true, the individual belongs to the infected compartment
+  recovered            ;; if true, the individual belongs to the recovered compartment
+  vaccinated           ;; if true, the individual has to property to be vaccinated
+  country              ;; Individuals belong to different countries, e.g. 1 and 2.
+  location             ;; Individuals can only infect other individuals in the same location
+]
+
+;; Global Variables that can be displayed via a monitor
+globals
+[ %susceptible_1           ;; what % of the population is susceptible
+  %infected_1              ;; what % of the population is infected
+  %recovered_1             ;; what % of the population is recovered
+  %vaccinated_1            ;; what % of the population is vaccinated
+  #deaths_1                ;; number of deaths in country 1
+  #deaths_2                ;; number of deaths in country 2
+  #infections_1            ;; number of total infections in country 1
+  #infections_2            ;; number of total infections in country 2
+]
+
+;; The setup is divided into four procedures
+to setup
+  clear-all
+  setup-turtles
+  update-global-variables
+  update-display
+  reset-ticks
+end
+
+;; The go function will be repeatedly executed until a stop happens.
+;; All functions below it will only be executed if the are called in the go function.
+;; -> All individuals are asked if they get infected, recover of get vaccinated.
+;; -> We update everything, increase the tick by one and start over.
+to go
+  if ticks = max_ticks [ stop ]
+  vaccinate   ;; Vaccination is happening to the population as a whole, not to single agents.
+  ask turtles
+  [ move
+    recover_end ;; Recovered individuals may get susceptible by prob_end_recovered
+    be_sick     ;; Infected individuals are sick and have the chance to either recover or die
+    travel      ;; All individuals have the probability prob_travel to be located in the other country this tick
+    infect      ;; the individuals get infected last, so they can not recover at the same tick.
+    return      ;; All individuals get back home.
+  ]
+  update-global-variables
+  update-display
+  tick
+end
+
+;; %%%%%%%%%%
+;; Procedures
+;; %%%%%%%%%%
+
+to vaccinate
+  ; No individual procedure! Do not ask a single individual to vaccinate, but the whole population
+  ; Syntax: ask n-of number agents [ command/report ]
+  let #new_vaccinations_1 vaccination_rate_1 * count turtles with [ country = 1 ]
+  let #not_vaccinated_1 count turtles with [ country = 1 and not vaccinated ]
+  ifelse #not_vaccinated_1 >= #new_vaccinations_1
+  [ ask n-of #new_vaccinations_1 turtles with [ country = 1 and not vaccinated ]
+    [ set vaccinated true
+  ] ]
+  [ ask n-of #not_vaccinated_1 turtles with [ country = 1 and not vaccinated ]
+    [ set vaccinated true
+  ] ]
+
+  let #new_vaccinations_2 vaccination_rate_2 * count turtles with [ country = 2 ]
+  let #not_vaccinated_2 count turtles with [ country = 2 and not vaccinated ]
+  ifelse #not_vaccinated_2 >= #new_vaccinations_2
+  [ ask n-of #new_vaccinations_2 turtles with [ country = 2 and not vaccinated ]
+    [ set vaccinated true
+  ] ]
+  [ ask n-of #not_vaccinated_2 turtles with [ country = 2 and not vaccinated ]
+    [ set vaccinated true
+  ] ]
+end
